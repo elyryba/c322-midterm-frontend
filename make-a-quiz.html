@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Question</title>
+  <link rel="stylesheet" href="navbar.css"/>
+  <link rel="stylesheet" href="make-a-quiz.css"/>
+</head>
+<body>
+  <ul class="topnav">
+    <li><a class="active" href="index.html">Home</a></li>
+    <li><a href="add-question.html">Add questions</a></li>
+    <li><a href="make-a-quiz.html">Create a quiz</a></li>
+    <li><a href="take-a-quiz.html">Take a quiz</a></li>
+    <li class="right"><a href="#about">About</a></li>
+  </ul>
+  <div class="main-content">
+    <div id="list" class="questions"></div>
+    <div class="quiz" id="quiz-container">
+      <h1>The new quiz</h1>
+      <div class="flex" id="title-input">
+        <h4>Quiz title:</h4>
+        <input/>
+      </div>
+      <button class="marginY" onclick="addQuiz(false)">Save your Changes</button>
+      <button class="marginY" onclick="addQuiz(true)">Save this quiz and start a new one</button>
+      <h3 class="marginY">If you want to remove a question from the quiz, you can click on the question here and it will be removed from the quiz</h3>
+      <div id="selectedList" class="selectedQuestions"></div>
+    </div>
+  </div>
+  <script>
+    let host = "https://c322-midterm-backend-53d7.onrender.com";
+    let questions = [];
+    let selectedQuestionIds = [];
+    let quizTitle = "";
+    let quizId = null;
+
+    async function getAll() {
+      let response = await fetch(host + "/questions");
+      let result = await response.json();
+      return result;
+    }
+
+    async function displayTheQuestions() {
+      if (questions.length == 0) {
+        questions = await getAll();
+      }
+      let list = document.getElementById("list");
+      list.innerHTML = "";
+      for (let question of questions) {
+        let div = createQuestionCard(question);
+        list.appendChild(div);
+      }
+    }
+
+    async function addQuiz(startNewAfterSave) {
+      let url = host + "/quizzes" + (quizId ? `/${quizId}` : "");
+      console.log(url);
+      let method = quizId ? "PUT" : "POST";
+      let body = JSON.stringify({
+        title: quizTitle,
+        questionIds: selectedQuestionIds,
+      });
+
+      try {
+        let response = await fetch(url, {
+          method: method,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: body,
+        });
+
+        let data = await response.json();
+
+        if (!quizId) {
+          quizId = data;
+        }
+
+        if (startNewAfterSave) {
+          location.reload();
+        }
+      } catch (error) {
+        console.error("add new quiz failed:", error);
+      }
+    }
+
+    function createQuestionCard(question) {
+      let div = document.createElement("div");
+      div.className = "card";
+      div.innerHTML = `<div id="question-card">
+        <img src="https://c322-midterm-backend-53d7.onrender.com/questions/${question.id}/image" alt="question" style="width:100%">
+        <div class="container">
+          <h4><b>${question.id}</b></h4> 
+          <p>${question.description}</p>
+          <form>
+              <input type="radio" id="q${question.id}ptionA" name="q2Answer" value="A">
+              <label for="q${question.id}ptionA">${question.choices[0]}</label><br>
+  
+              <input type="radio" id="q${question.id}ptionB" name="q2Answer" value="B">
+              <label for="q${question.id}ptionB">${question.choices[1]}</label><br>
+  
+              <input type="radio" id="q${question.id}ptionC" name="q2Answer" value="C">
+              <label for="q${question.id}ptionC">${question.choices[2]}</label><br>       
+          </form> 
+        </div>
+        </div>`;
+
+      div.addEventListener("click", function () {
+        selectQuestion(question, div);
+      });
+
+      return div;
+    }
+
+    function selectQuestion(question, questionElement) {
+      let clonedElement = questionElement.cloneNode(true);
+
+      document.getElementById("list").removeChild(questionElement);
+
+      let selectedList = document.getElementById("selectedList");
+      selectedList.appendChild(clonedElement);
+      clonedElement.addEventListener("click", function () {
+        unselectQuestion(question, clonedElement);
+      });
+
+      selectedQuestionIds.push(question.id);
+      console.log(selectedQuestionIds);
+    }
+
+    function unselectQuestion(question, questionElement) {
+      document.getElementById("selectedList").removeChild(questionElement);
+
+      let list = document.getElementById("list");
+      list.appendChild(createQuestionCard(question));
+
+      selectedQuestionIds = selectedQuestionIds.filter(
+        (id) => id !== question.id
+      );
+      console.log("selected ids:");
+      console.log(selectedQuestionIds);
+    }
+
+    function trackTitleChanges() {
+      let titleInput = document.querySelector("#title-input input");
+
+      titleInput.addEventListener("input", function (event) {
+        quizTitle = event.target.value;
+
+        console.log("Currenttitle:", quizTitle);
+      });
+    }
+
+    displayTheQuestions();
+    trackTitleChanges();
+  </script>
+</body>
+</html>
